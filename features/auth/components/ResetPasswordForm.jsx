@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-export function ResetPasswordForm({ token }) {
+export default function ResetPasswordForm({ token }) {
   const router = useRouter();
   const {
     register,

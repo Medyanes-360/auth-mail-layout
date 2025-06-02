@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-export function RegisterForm() {
+export default function RegisterForm() {
   const router = useRouter();
   const {
     register,

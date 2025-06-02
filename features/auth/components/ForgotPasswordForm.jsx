@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-export function ForgotPasswordForm() {
+export default function ForgotPasswordForm() {
   const router = useRouter();
   const {
     register,
