@@ -8,7 +8,7 @@ import {
 import { compare, hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
-import { sendPasswordResetEmail } from "../utils/email";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "../utils/email";
 import { generateToken } from "../utils/jwt";
 
 // Sabitler
@@ -47,8 +47,12 @@ export async function registerUser(data) {
     if (newUser.error) {
       throw new Error(newUser.error);
     }
-
+    
+    // Hoş geldin emaili gönder
+    await sendWelcomeEmail(email, name);
+    
     revalidatePath("/login");
+
     return {
       success: true,
       data: {
