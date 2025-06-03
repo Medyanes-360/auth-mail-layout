@@ -1,4 +1,4 @@
-import { sendMail } from "@/features/email/servers/service";
+import { sendMail } from "@/servers/email/servers/service";
 
 export const sendPasswordResetEmail = async (email, resetToken) => {
   try {
@@ -9,7 +9,12 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
     // console.log(resetLink);
     // console.log('=========================================');
 
-    await sendMail({to:email, subject: "Şifre Sıfırlama Talebi", template: "passwordreset", props: {resetLink}});
+    await sendMail({
+      to: email,
+      subject: "Şifre Sıfırlama Talebi",
+      template: "passwordreset",
+      props: { resetLink },
+    });
 
     return true;
   } catch (error) {
@@ -19,8 +24,13 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
 };
 
 export const sendWelcomeEmail = async (email, name) => {
-  try{
-    await sendMail({to:email, subject: "Hoş Geldiniz", template: "newusergreet", props: {username: name}});
+  try {
+    await sendMail({
+      to: email,
+      subject: "Hoş Geldiniz",
+      template: "newusergreet",
+      props: { username: name },
+    });
   } catch (error) {
     console.error("Hata:", error);
     return false;

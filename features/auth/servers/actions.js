@@ -47,10 +47,10 @@ export async function registerUser(data) {
     if (newUser.error) {
       throw new Error(newUser.error);
     }
-    
+
     // Hoş geldin emaili gönder
     await sendWelcomeEmail(email, name);
-    
+
     revalidatePath("/login");
 
     return {

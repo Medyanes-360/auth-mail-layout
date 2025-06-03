@@ -1,14 +1,14 @@
-"use server"
-import React from "react";
+"use server";
 import { render } from "@react-email/components";
+import React from "react";
 import NewUserGreet from "./NewUserGreet.jsx";
-import Test from "./Test.jsx";
 import PasswordReset from "./PasswordReset.jsx";
+import Test from "./Test.jsx";
 
 const templates = {
   newusergreet: NewUserGreet,
   test: Test,
-  passwordreset: PasswordReset
+  passwordreset: PasswordReset,
 };
 
 export async function renderTemplate(name, props) {
