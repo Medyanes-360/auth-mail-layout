@@ -31,9 +31,10 @@ export default function ForgotPasswordForm() {
         );
       }
 
-      const resetUrl = `/reset-password/${result.resetToken}`;
-      console.log("Şifre sıfırlama sayfasına yönlendiriliyor:", resetUrl);
-      router.push(resetUrl);
+      alert(
+        "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen e-postanızı kontrol edin."
+      );
+      router.push("/login");
     } catch (error) {
       alert(error.message || "Bir hata oluştu. Lütfen tekrar deneyin.");
     }
