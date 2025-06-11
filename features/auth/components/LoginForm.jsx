@@ -2,9 +2,9 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginUser } from "@/features/auth/servers/actions";
 import { cn } from "@/lib/utils";
 import { IconBrandGoogle } from "@tabler/icons-react";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -25,24 +25,20 @@ export default function LoginForm() {
 
   const onSubmit = async (data) => {
     try {
-      const result = await loginUser(data);
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
 
-      if (!result) {
+      if (result?.error) {
         throw new Error("E-posta veya şifre hatalı.");
-      } else {
-        // Token'ı localStorage'a kaydet
-        localStorage.setItem("authToken", result.token);
-        // Kullanıcı bilgilerini localStorage'a kaydet (hassas bilgiler hariç)
-        localStorage.setItem("user", JSON.stringify(result.user));
-
-        // Kısa bir timeout sonrası yönlendirme yap
-        setTimeout(() => {
-          window.location.href = "/"; // router.push yerine window.location kullanarak sayfayı yeniliyoruz
-        }, 100);
       }
+
+      router.push("/");
+      router.refresh();
     } catch (error) {
       alert(error.message || "Giriş yapılırken bir hata oluştu.");
-      return false;
     }
   };
 
@@ -108,6 +104,7 @@ export default function LoginForm() {
 
           <div className="flex flex-col space-y-4">
             <button
+              onClick={() => signIn("google", { callbackUrl: "/" })}
               className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)] cursor-pointer"
               type="button">
               <IconBrandGoogle className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />

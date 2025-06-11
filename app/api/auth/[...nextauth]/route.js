@@ -1,111 +1,124 @@
-import { prisma } from "@/prisma/prisma";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import {
+  createNewData,
+  getDataByMany,
+  updateData,
+} from "@/servers/serviceOperations";
 import { compare } from "bcrypt";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 
 export const authOptions = {
-  adapter: PrismaAdapter(prisma),
   debug: process.env.NODE_ENV === "development",
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Şifre", type: "password" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        // Admin için özel kontrol
-        if (
-          credentials.email === "admin@example.com" &&
-          credentials.password === "password123"
-        ) {
-          // Veritabanından admin kullanıcısını bulmaya çalış
-          const adminUser = await prisma.user.findUnique({
-            where: { email: "admin@example.com" },
-          });
-
-          // Eğer admin kullanıcısı veritabanında varsa, onu kullan
-          if (adminUser) {
-            return {
-              id: adminUser.id,
-              email: adminUser.email,
-              name: adminUser.name,
-              role: adminUser.role || "ADMIN",
-            };
-          } else {
-            // Yoksa elle oluşturulmuş bir admin objesi döndür
-            return {
-              id: "admin-id",
-              email: "admin@example.com",
-              name: "Admin Kullanıcı",
-              role: "ADMIN",
-            };
-          }
-        }
-
         try {
-          // Kullanıcıyı veritabanında bul
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
+          const users = await getDataByMany("user", {
+            email: credentials.email.toLowerCase(),
+            provider: "credentials",
           });
 
-          if (!user) {
+          if (!users || users.length === 0) {
             return null;
           }
 
-          // Şifreyi kontrol et
-          let isPasswordValid = false;
+          const user = users[0];
+          const isValid = await compare(credentials.password, user.password);
 
-          try {
-            isPasswordValid = await compare(
-              credentials.password,
-              user.password
-            );
-          } catch (error) {
-            // Şifre karşılaştırma hatası durumunda
-            if (
-              process.env.NODE_ENV === "development" &&
-              credentials.password === "password123"
-            ) {
-              isPasswordValid = true; // Geliştirme modunda test şifresi için
-            }
-          }
-
-          if (!isPasswordValid) {
+          if (!isValid) {
             return null;
           }
 
           return {
             id: user.id,
-            email: user.email,
             name: user.name,
+            email: user.email,
+            provider: "credentials",
             role: user.role || "USER",
           };
         } catch (error) {
+          console.error("Giriş hatası:", error);
           return null;
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      if (account.provider === "google") {
+        try {
+          const existingUser = await getDataByMany("user", {
+            email: profile.email.toLowerCase(),
+          });
+
+          if (existingUser && existingUser.length > 0) {
+            await updateData("user", existingUser[0].id, {
+              provider: "google",
+              providerAccountId: profile.sub,
+            });
+            user.id = existingUser[0].id;
+            user.role = existingUser[0].role;
+            user.provider = "google";
+            return true;
+          }
+
+          const name = profile.name.toLowerCase();
+          const email = profile.email.toLowerCase();
+
+          const newUser = await createNewData("user", {
+            name: name,
+            email: email,
+            provider: "google",
+            providerAccountId: profile.sub,
+            role: "USER",
+          });
+
+          if (newUser.error) {
+            return false;
+          }
+
+          user.id = newUser.id;
+          user.role = "USER";
+          user.provider = "google";
+          return true;
+        } catch (error) {
+          console.error("Google girişi hatası:", error);
+          return false;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, account }) {
       if (user) {
-        token.role = user.role;
         token.id = user.id;
+        token.role = user.role;
+        token.provider = user.provider;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
+      if (session?.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.provider = token.provider;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
   pages: {
@@ -119,4 +132,5 @@ export const authOptions = {
 };
 
 const handler = NextAuth(authOptions);
+
 export { handler as GET, handler as POST };

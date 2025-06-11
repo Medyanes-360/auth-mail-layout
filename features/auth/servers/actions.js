@@ -5,11 +5,10 @@ import {
   getDataByMany,
   updateData,
 } from "@/servers/serviceOperations";
-import { compare, hash } from "bcrypt";
+import { hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 import { sendPasswordResetEmail, sendWelcomeEmail } from "../utils/email";
-import { generateToken } from "../utils/jwt";
 
 // Sabitler
 const USER_TABLE = "user";
@@ -68,45 +67,6 @@ export async function registerUser(data) {
   }
 }
 
-export async function loginUser(credentials) {
-  try {
-    // Email ile kullanıcıyı bul
-    const users = await getDataByMany(USER_TABLE, {
-      email: credentials.email,
-    });
-
-    if (!users || users.length === 0 || users.error) {
-      return null; // Kullanıcı bulunamadı
-    }
-
-    const user = users[0];
-
-    // Şifre kontrolü
-    const isPasswordValid = await compare(credentials.password, user.password);
-
-    if (!isPasswordValid) {
-      return null; // Şifre geçersiz
-    }
-
-    // JWT token oluştur
-    const token = generateToken(user);
-
-    // Kullanıcı bilgileri ve token'ı döndür
-    return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-      token,
-    };
-  } catch (error) {
-    console.error("Kullanıcı girişi sırasında hata:", error);
-    return null;
-  }
-}
-
 // Şifre sıfırlama talebi oluşturur ve kullanıcıya email gönderir
 export async function requestPasswordReset(email) {
   try {
@@ -124,26 +84,26 @@ export async function requestPasswordReset(email) {
 
     const user = users[0];
 
-    // Benzersiz token oluştur
-    const resetToken = uuidv4();
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 1); // 1 saat geçerli
+    // Benzersiz şifre sıfırlama kodu oluştur
+    const passwordResetCode = uuidv4();
+    const passwordResetExpiry = new Date();
+    passwordResetExpiry.setHours(passwordResetExpiry.getHours() + 1); // 1 saat geçerli
 
-    // Token'ı kullanıcı bilgilerine kaydet
+    // Şifre sıfırlama kodunu kullanıcı bilgilerine kaydet
     await updateData(USER_TABLE, user.id, {
-      resetToken: resetToken,
-      resetTokenExpiry: tokenExpiry,
+      resetToken: passwordResetCode,
+      resetTokenExpiry: passwordResetExpiry,
     });
 
     // Email gönder
-    const emailSent = await sendPasswordResetEmail(email, resetToken);
+    const emailSent = await sendPasswordResetEmail(email, passwordResetCode);
     if (!emailSent) {
       throw new Error("Email gönderilemedi.");
     }
 
     return {
       success: true,
-      resetToken: resetToken,
+      resetToken: passwordResetCode,
     };
   } catch (error) {
     console.error("Şifre sıfırlama talebi sırasında hata:", error);
@@ -152,28 +112,34 @@ export async function requestPasswordReset(email) {
 }
 
 // Şifre sıfırlama işlemini gerçekleştirir
-export async function resetPassword(token, newPassword) {
+export async function resetPassword(passwordResetCode, newPassword) {
   try {
-    // Token'a sahip kullanıcıyı bul
+    // Şifre sıfırlama kodu ile kullanıcıyı bul
     const users = await getDataByMany(USER_TABLE, {
-      resetToken: token,
+      resetToken: passwordResetCode,
     });
 
     if (!users || users.length === 0) {
-      return { success: false, error: "Geçersiz veya süresi dolmuş token." };
+      return {
+        success: false,
+        error: "Geçersiz veya süresi dolmuş şifre sıfırlama kodu.",
+      };
     }
 
     const user = users[0];
 
-    // Token süresini kontrol et
+    // Şifre sıfırlama kodunun süresini kontrol et
     if (new Date(user.resetTokenExpiry) < new Date()) {
-      return { success: false, error: "Token süresi dolmuş." };
+      return {
+        success: false,
+        error: "Şifre sıfırlama kodunun süresi dolmuş.",
+      };
     }
 
     // Yeni şifreyi hashle
     const hashedPassword = await hash(newPassword, 10);
 
-    // Şifreyi güncelle ve token bilgilerini temizle
+    // Şifreyi güncelle ve sıfırlama kodunu temizle
     const updateResult = await updateData(USER_TABLE, user.id, {
       password: hashedPassword,
       resetToken: null,

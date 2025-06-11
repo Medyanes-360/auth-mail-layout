@@ -9,93 +9,27 @@ datasource db {
 
 // Kullanıcı modeli
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  email         String    @unique
-  password      String
-  name          String?
-  surname       String?
-  phoneNumber   String?
-  isActive      Boolean   @default(false) // E-posta doğrulaması için
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  email             String   @unique
+  password          String? // Google ile giriş yapanlar için null olabilir
+  name              String?
+  surname           String?
+  provider          String   @default("credentials") // "credentials" veya "google"
+  providerAccountId String? // Google ID'si için
+  image             String?
+  role              Role     @default(USER)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Şifre sıfırlama için
   resetToken       String?
   resetTokenExpiry DateTime?
-
-  // Rol yönetimi
-  roles Role[] @default([USER])
-
-  // MFA için
-  twoFactorEnabled Boolean  @default(false)
-  twoFactorSecret  String?
-  backupCodes      String[] // Yedek 2FA kodları
-
-  // Oturum ve hesap yönetimi
-  accounts Account[]
-  sessions Session[]
-
-  // Şifre sıfırlama ve e-posta doğrulama
-  tokens Token[]
-
-  // Son giriş bilgileri
-  lastLogin   DateTime?
-  lastLoginIP String?
-
-  // Hesap kilitleme için
-  loginAttempts Int       @default(0)
-  lockedUntil   DateTime?
-}
-
-// Oturum modeli
-model Session {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  sessionToken String   @unique
-  userId       String   @db.ObjectId
-  expires      DateTime
-  createdAt    DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// Sosyal medya hesapları için
-model Account {
-  id                String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String  @db.ObjectId
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.String
-  access_token      String? @db.String
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.String
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-// Token modeli (şifre sıfırlama, e-posta doğrulama vb. için)
-model Token {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  token     String    @unique
-  type      TokenType
-  expires   DateTime
-  createdAt DateTime  @default(now())
-  userId    String    @db.ObjectId
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Kullanıcı rolleri
 enum Role {
   USER
   ADMIN
-  MODERATOR
-  EDITOR
 }
 
 // Token tipleri

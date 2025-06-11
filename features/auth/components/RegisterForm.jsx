@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { registerValidations } from "@/features/auth/components/RegisterFormValidations";
 import { registerUser } from "@/features/auth/servers/actions";
 import { cn } from "@/lib/utils";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -33,8 +34,20 @@ export default function RegisterForm() {
 
       if (!result.success) {
         throw new Error(result.error || "Kayıt başarısız oldu.");
-      } else {
+      }
+
+      // Kayıt başarılı, otomatik giriş yap
+      const signInResult = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
         router.push("/login?registered=true");
+      } else {
+        router.push("/");
+        router.refresh();
       }
     } catch (error) {
       alert(error.message || "Bir hata oluştu. Lütfen tekrar deneyin.");
@@ -113,14 +126,9 @@ export default function RegisterForm() {
               type="password"
               placeholder="••••••••"
               {...register("confirmPassword", {
-                validate: (val) => {
-                  if (!val) {
-                    return "Şifre tekrarı zorunludur";
-                  }
-                  if (watch("password") !== val) {
-                    return "Şifreler eşleşmiyor";
-                  }
-                },
+                ...registerValidations.confirmPassword,
+                validate: (value) =>
+                  value === watch("password") || "Şifreler eşleşmiyor",
               })}
             />
             {errors.confirmPassword && (
@@ -134,17 +142,15 @@ export default function RegisterForm() {
             disabled={isSubmitting}
             className="bg-gradient-to-br relative group/btn from-black dark:from-zinc-900 dark:to-zinc-900 to-neutral-600 block dark:bg-zinc-800 w-full text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] disabled:opacity-50 cursor-pointer"
             type="submit">
-            {isSubmitting ? "Kaydediliyor..." : "Kayıt Ol"}
+            {isSubmitting ? "Kayıt yapılıyor..." : "Kayıt Ol"}
             <BottomGradient />
           </button>
 
-          <div className="bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-700 to-transparent my-8 h-[1px] w-full" />
-
-          <div className="flex flex-col space-y-4">
+          <div className="mt-4">
             <Link
               href="/login"
-              className="text-neutral-700 dark:text-neutral-300 text-sm text-center hover:underline">
-              Hesabınız var mı? Giriş yapın
+              className="text-neutral-700 dark:text-neutral-300 text-sm text-center block hover:underline">
+              Zaten hesabınız var mı? Giriş yapın
             </Link>
           </div>
         </form>
