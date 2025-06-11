@@ -1,4 +1,5 @@
-import Header from "@/components/layout/Header";
+import { Navbar1 } from "@/components/layout/navbar/shadcnblocks-com-navbar1";
+import AuthProvider from "@/servers/auth/AuthProvider";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -21,9 +22,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Header />
-        {children}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-y-hidden`}>
+        <AuthProvider>
+          <Navbar1 />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
