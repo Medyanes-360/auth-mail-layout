@@ -21,7 +21,7 @@ export async function middleware(request) {
   }
 
   // Eğer user sayfasına erişilmeye çalışılıyorsa ve kullanıcı giriş yapmamışsa, login sayfasına yönlendir
-  if (request.nextUrl.pathname.startsWith("/user") && !token) {
+  if (request.nextUrl.pathname.startsWith("/profile") && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
